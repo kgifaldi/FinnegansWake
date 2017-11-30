@@ -1,4 +1,4 @@
-import wittengram
+import wittenmod
 
 if __name__ == "__main__":
 
@@ -8,7 +8,7 @@ if __name__ == "__main__":
     #e_m.train("langs/english")
     #e_m.start()
     print("1")
-    g_m = wittengram.Wittengram()
+    g_m = wittenmod.Wittengram()
     print("2")
     g_m.train("German")
     print("3")
@@ -28,6 +28,7 @@ if __name__ == "__main__":
     #d_m.start()
 
 
+    count = 0
     for line in open("langs/finnegans.txt"):
         max_p = 0.0
         best = 0
@@ -37,8 +38,14 @@ if __name__ == "__main__":
                 max_p = prob
                 best = i
             g_m.read(w)
-        l = best - 5
+        l = best - 5 #get index of best match
         if best - 5 < 0:
             l = 0
-        print(line.rstrip('\n')[l:best + 1], max_p)
+        if max_p > 0.99:
+            print('-*-')
+            print(line.rstrip('\n'))
+            print(line.rstrip('\n')[l:best + 1], max_p)
+            print(' ')
+            count += 1
             #incorporate new data to model (necessary to keep track of grams)
+    print("lines: " + str(count))
