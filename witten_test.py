@@ -1,68 +1,66 @@
 import wittenmod
+import os
 #from polyglot.detect import Detector
 
-if __name__ == "__main__":
+
+def search_line(line, e_m, f_m, ofile):
+    """search line for notable things to output"""
+    best_p= [] #highest probability moments
+    for i, w in enumerate(line.rstrip('\n')):
+        prob_j = e_m.prob(w) #probability that joyce was writing English
+        prob = f_m.prob(w) #probability of this character in f
+        if prob > 0.90 and prob_j < 0.4:
+            best_p.append((i, prob))
+        e_m.read(w)
+        f_m.read(w)
+    if best_p:
+        ofile.write(line)
+        for best, max_p in best_p:
+            l = best - 5 #get index of best match
+            if best - 5 < 0:
+                l = 0  
+            ofile.write(line.rstrip('\n')[l:best + 1] + '\n')
+        ofile.write('\n')
+
+def main():
 
     """Program to train and test the fivegram model"""
 
     e_m = wittenmod.Wittengram()
-    print("1")
-    e_m.train("langs/joyce/2814-0.txt")
-    print("...")
-    e_m.train("langs/joyce/4217-0.txt")
-    print("...")
-    e_m.train("langs/joyce/4300-0.txt")
-    print("...")
-    e_m.train("langs/joyce/55945-0.txt")
-    print("...")
-    e_m.train("langs/joyce/pg2817.txt")
-    print("...")
+    print("joyce")
+    for tfile in os.listdir("./langs/joyce"):
+        e_m.train("./langs/joyce/" + tfile)
+        print(tfile + "...")
     e_m.start()
 
     g_m = wittenmod.Wittengram()
-    print("2")
-    g_m.train("German")
-    print("...")
-    g_m.train("langs/german/pg6698.txt") 
-    print("...")
-    g_m.train("langs/german/pg27769.txt")
+    print("German")
+    for tfile in os.listdir("./langs/german"):
+        g_m.train("./langs/german/" + tfile)
+        print(tfile + "...")
     g_m.start()
-    print("3")
-    print("4")
 
-    #i_m = wittengram.Wittengram()
-    #i_m.train("langs/irish")
-    #i_m.start()
+    i_m = wittenmod.Wittengram()
+    print("Irish")
+    for tfile in os.listdir("./langs/irish"):
+        i_m.train("./langs/irish/" + tfile)
+        print(tfile + "...")
+    i_m.start()
 
-    #f_m = wittengram.Wittengram()
-    #f_m.train("langs/french")
-    #f_m.start()
-
-    #d_m = wittengram.Wittengram()
-    #d_m.train("langs/danish")
-    #d_m.start()
-
-
-    count = 0 #count of lines matching this language
-    for line in open("langs/finnegans.txt"):
-        #max_p = 0.0 #find moment with highest character prob
-        best_p= []
-        for i, w in enumerate(line.rstrip('\n')):
-            prob_j = e_m.prob(w) #probability that joyce was writing English
-            prob = g_m.prob(w) #probability of this character in German
-            if prob > 0.90 and prob_j < 0.4:
-                best_p.append((i, prob))
-            g_m.read(w)
-            e_m.read(w)
-        if best_p:
-            print('-*-')
-            print(line.rstrip('\n'))
-            count += 1 # count lines
-            for best, max_p in best_p:
-                l = best - 5 #get index of best match
-                if best - 5 < 0:
-                    l = 0  
-                print(line.rstrip('\n')[l:best + 1], max_p)
-            print(' ')
+    f_m = wittenmod.Wittengram()
+    print("French")
+    for tfile in os.listdir("./langs/french/"):
+        print(tfile + "...")
+        f_m.train("./langs/french/" + tfile)
+    f_m.start()
+ 
+    with open("langs/finnegans.txt") as tfile, open("output/french", "w") as ffile, open("output/german", "w") as gfile, open("output/irish", "w") as ifile:
+        for line in tfile:
+            search_line(line, e_m, g_m, gfile)
+            search_line(line, e_m, f_m, ffile)
+            search_line(line, e_m, i_m, ifile)
             #incorporate new data to model (necessary to keep track of grams)
-    print("lines: " + str(count))
+
+
+if __name__ == "__main__":
+    main()
