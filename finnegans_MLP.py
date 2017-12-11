@@ -4,7 +4,7 @@
 
 import keras
 from keras.models import Sequential
-from keras.layers import Dense, Dropout, Embedding, Activation
+from keras.layers import Dense, Dropout, Embedding, Activation, Flatten
 from keras.optimizers import SGD
 from keras.preprocessing.text import hashing_trick, Tokenizer
 from nltk.tag import StanfordPOSTagger
@@ -25,11 +25,11 @@ class FinnegansMLP:
 		"""Compile data for the given category (indexed in the following list)"""
 
 		n = self.n
-		i = self.isize
+		isize = self.isize
 
 		text = ""
 		for filename in os.listdir("./langs/" + self.categories[cat]):
-			with open(filename) as tf:
+			with open("./langs/" + self.categories[cat] + "/" + filename) as tf:
 				for line in tf:
 					for c in line:
 						if c.isalpha():
@@ -44,38 +44,47 @@ class FinnegansMLP:
 		labels = []
 		data = []
 		for i in range(0, len(raw_data), isize):
-			data.append(raw_data[i:i+isize])
+			if i + isize < len(raw_data): #in bounds
+				data.append(raw_data[i:i+isize])
+			else:
+				zeros = [0]*(i+isize - len(raw_data)) #pad the rest of the values
+				data.append(raw_data[i:len(raw_data)] + zeros)
 			labels.append(cat) #an index for each category is training target
-		
-		#make into numpy arrays
-		data = np.array(data)
-		labels = np.array(labels)
-
-		return np.array(data), np.array(labels)
+		return data, labels #return two arrays 
 
 	def run_model(self):
 		model = Sequential()
 		n = self.n#how many letter_tag types we expect to see
 		isize= self.isize
-		model.add(Embedding( n, 15, input_length=isize))
+		model.add(Embedding(n, 15, input_length=isize))
 		#model.add(Dropout(0.5)) #TODO: look into Dropout
 		#model.add(Dense(7, activation='relu'))
 		#model.add(Dropout(0.5))
-		model.add(Dense(4, activation='softmax')) #4 classes
+		model.add(Flatten())
+		model.add(Dense(4, activation='softmax')) #4 classes, TODO: consider sigmoid, could be more generous
 
 		#sgd = SGD(lr=0.01, decay=1e-6, momentum=0.9, nesterov=True)
 		model.compile(loss='categorical_crossentropy',
 				optimizer='adam', #sgd, #'rmsprop' might also work, or 'adam'
 				metrics=['accuracy'])
-		data = np.array()
-		labels = np.array()
+		data = []
+		labels = [] #concatenate all data and labels
 		for i in range(4):
 			idata, ilabels = self.compile_data(i)
-			data.append(idata)
+			data += idata
+			labels += ilabels
+		print(data)
+		data = np.array([np.array(d) for d in data])
+		labels = np.array(labels)
+		print("created data")
 			
 		one_hot_labels = keras.utils.to_categorical(labels, num_classes=4)
+		print(one_hot_labels)
 
-		model.fit(data, one_hot_labels, epochs = 10, batch_size=32)
+		#TODO: shuffle with np permutation
+		print(data)
+		print("fitting model")
+		model.fit(data, one_hot_labels, epochs=10, batch_size=32)
 
 		#prediction = model.predict(finnegans_clips, batch_size = 32, verbose=1) # should give us batch_size vectors of classifications,
 		#so we print the parts it predicted as german. That's why it's key not to use RNN, or it might all be Joyce
@@ -144,4 +153,5 @@ class FinnegansMLP:
 
 if __name__=="__main__":
 	fmodel = FinnegansMLP(100, 9) #vocab size and input length
-	fmodel.make_data() #this takes very long, tagging each item
+	#fmodel.make_data() #this takes very long, tagging each item
+	fmodel.run_model()
