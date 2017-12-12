@@ -52,6 +52,25 @@ class FinnegansMLP:
 			labels.append(cat) #an index for each category is training target
 		return data, labels #return two arrays 
 
+	def make_test_data(self, line):
+		"""Make data set to predict the languages in a line of finnegans wake."""
+		line = line.strip()
+		text = ""
+		for c in line:
+			if c == " ":
+				text += "_ " #encode spaces just like test data
+			else:
+				text += c + " "
+		
+		raw_data = hashing_trick(text, self.n, hash_function='md5', lower=False, split=' ')
+
+		data = []
+		if len(raw_data) < self.isize: #add padding
+			data.append(raw_data + [0]*(self.isize-len(raw_data))) #add 0 up to isize
+		for i in range(len(raw_data)-self.isize): #get every isize length window
+			data.append(raw_data[i:i+self.isize]) #get encodings for this window
+		return data
+		
 	def run_model(self):
 		model = Sequential()
 		n = self.n#how many letter_tag types we expect to see
@@ -84,10 +103,43 @@ class FinnegansMLP:
 		#TODO: shuffle with np permutation
 		print(data)
 		print("fitting model")
-		model.fit(data, one_hot_labels, epochs=10, batch_size=32)
+		model.fit(data, one_hot_labels, epochs=2, batch_size=32)
 
-		#prediction = model.predict(finnegans_clips, batch_size = 32, verbose=1) # should give us batch_size vectors of classifications,
-		#so we print the parts it predicted as german. That's why it's key not to use RNN, or it might all be Joyce
+		with open("french_predictions", "w+") as of, open("german_predictions", "w+") as og, open("irish_predictions", "w+") as oi:
+			for line in open("langs/finnegans.txt"):
+				f = False #have found these in the line
+				g = False
+				ir = False
+				integer_samples = self.make_test_data(line)
+				if not integer_samples:
+					print("BLANK " + line)
+					continue #sometimes will be an empty line
+				samples = np.array([np.array(s) for s in integer_samples])
+				print(samples)
+				prediction = model.predict(samples, batch_size=len(integer_samples), verbose=1) # should give us batch_size vectors of classifications,
+				print(prediction)
+				for i, v in enumerate(prediction): #should be a prediction for each index in line
+					"""
+					best = np.argmax(v) #this gives us the best language for that part
+					#Perhaps we could add everything that's better than the joyce tag. That's a good strategy
+					if v[0]:
+						if not f:
+							of.write(line)
+							f = True
+						of.write(line[i + self.isize])
+					if v[1]:
+						if not g:
+							og.write(line)
+							g = True
+						og.write(line[i + self.isize])				
+					if v[2]:
+						if not ir:
+							of.write(line)
+							ir = True
+						of.write(line[i + self.isize]) #picked this part of the line
+					"""
+
+		#so we print the parts it predicted for each language. That's why it's key not to use RNN, or it might all be Joyce
 		#go back through finnegans and print the segments that were tagged as german (and line number can be stored
 		# with data, zip through it)
 		#or do predict_on_batch for eatch line part of finnegans wake.
@@ -103,9 +155,11 @@ class FinnegansMLP:
 
 		with open("german_data", "w+") as wf: #output all german data to a file
 			for filename in os.listdir("./langs/german"):
+				print(filename + "...")
 				with open("./langs/german/" + filename) as gf:
 					for line in gf:
-						text = german_tagger.tag(line.strip())
+						print(line.strip())
+						text = german_tagger.tag(word_tokenize(line.strip()))
 						for word, tag in text: #, tag in text:
 							for c in word:
 								wf.write("_".join([c, tag]) + " ")
@@ -118,9 +172,11 @@ class FinnegansMLP:
 
 		with open("french_data", "w+") as wf: #output all french data to a file
 			for filename in os.listdir("./langs/french"):
+				print(filename + "...")
 				with open("./langs/french/" + filename) as ff:
 					for line in ff:
-						text = french_tagger.tag(line.strip())
+						print(line.strip())
+						text = french_tagger.tag(word_tokenize(line.strip()))
 						for word, tag in text: #, tag in text:
 							for c in word:
 								wf.write("_".join([c, tag]) + " ")
@@ -130,10 +186,12 @@ class FinnegansMLP:
 		
 		english_model = '../stanford-postagger-full-2017-06-09/models/english-left3words-distsim.tagger'
 		english_tagger = StanfordPOSTagger(english_model, jar)
+		print("finnegans wake...")
 		with open("finnegans_data", "w+") as wf:
 			with open("./langs/finnegans.txt") as fif:
 				for line in fif:
-					text = english_tagger.tag(line.strip())
+					print(line.strip())
+					text = english_tagger.tag(word_tokenize(line.strip()))
 					for word, tag in text: #, tag in text:
 						for c in word:
 							wf.write("_".join([c, tag]) + " ")
