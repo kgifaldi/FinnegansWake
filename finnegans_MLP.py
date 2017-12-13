@@ -137,7 +137,11 @@ class FinnegansMLP:
 		model.fit(data, one_hot_labels, epochs=1, batch_size=32)
 
 		with open("french_predictions", "w+") as of, open("german_predictions", "w+") as og, open("irish_predictions", "w+") as oi:
-			for line in open("langs/finnegans.txt"):
+			if self.tagging:
+				testdata = "finnegans_data"
+			else:
+				testdata = "langs/finnegans.txt"
+			for line in open(testdata):
 				f = False #have found these in the line
 				g = False
 				ir = False
@@ -182,18 +186,22 @@ class FinnegansMLP:
 							lastg = i	
 					if best == 2:
 						if not ir:
-							ir.write(line + "\n")
+							oi.write(line + "\n")
 							ir = True
 						if i - lastir > self.isize:
-							ir.write(line[i:r] + "\n") #picked this part of the line
+							oi.write(line[i:r] + "\n") #picked this part of the line
 							lastir = i
+				if f:
+					of.write("\n") #begin new line if we wrote to the output files
+				if g:
+					og.write("\n")
+				if ir:
+					oi.write("\n")
 
 		#so we print the parts it predicted for each language. That's why it's key not to use RNN, or it might all be Joyce
 		#go back through finnegans and print the segments that were tagged as german (and line number can be stored
 		# with data, zip through it)
 		#or do predict_on_batch for eatch line part of finnegans wake.
-
-		#another great idea: shuffle training samples together, should train much better
 
 	def make_tag_data(self):
 		"""generate the tagged data (which takes ages)"""
