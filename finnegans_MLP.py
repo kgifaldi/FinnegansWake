@@ -106,11 +106,11 @@ class FinnegansMLP:
 		model = Sequential()
 		n = self.n#how many letter_tag types we expect to see
 		isize= self.isize
+
 		model.add(Embedding(n, 15, input_length=isize))
-		#model.add(Dropout(0.5)) #TODO: look into Dropout
-		#model.add(Dense(7, activation='relu'))
-		#model.add(Dropout(0.5))
+
 		model.add(Flatten())
+
 		model.add(Dense(4, activation='softmax')) #4 classes, TODO: consider sigmoid, could be more generous
 
 		#sgd = SGD(lr=0.01, decay=1e-6, momentum=0.9, nesterov=True)
@@ -134,16 +134,16 @@ class FinnegansMLP:
 			
 		one_hot_labels = keras.utils.to_categorical(labels, num_classes=4)
 
-		model.fit(data, one_hot_labels, epochs=2, batch_size=32)
+		model.fit(data, one_hot_labels, epochs=1, batch_size=32)
 
 		with open("french_predictions", "w+") as of, open("german_predictions", "w+") as og, open("irish_predictions", "w+") as oi:
 			for line in open("langs/finnegans.txt"):
 				f = False #have found these in the line
 				g = False
 				ir = False
-				lastf = 1000 #last index where this language appeared (should be somewhat far apart)
-				lastg = 1000
-				lastir = 1000
+				lastf = -1000 #last index where this language appeared (should be somewhat far apart)
+				lastg = -1000
+				lastir = -1000
 				integer_samples = self.make_test_data(line)
 				if len(line) < self.isize:
 					continue #too short to consider
@@ -167,26 +167,25 @@ class FinnegansMLP:
 						r = i + self.isize
 
 					if best == 0:
-						print(f)
 						if not f: #first french word found, write line
 							of.write(line + "\n")
 							f = True
-						if lastf - i > self.isize:
+						if i - lastf > self.isize:
 							of.write(line[i:r] + "\n")
 							lastf = i #reset index
 					if best == 1:
 						if not g: 
 							og.write(line + "\n")
 							g = True
-						if lastg - i > self.isize:
+						if i - lastg > self.isize:
 							og.write(line[i:r] + "\n")
 							lastg = i	
 					if best == 2:
 						if not ir:
-							of.write(line + "\n")
+							ir.write(line + "\n")
 							ir = True
-						if lastir - i > self.isize:
-							of.write(line[i:r] + "\n") #picked this part of the line
+						if i - lastir > self.isize:
+							ir.write(line[i:r] + "\n") #picked this part of the line
 							lastir = i
 
 		#so we print the parts it predicted for each language. That's why it's key not to use RNN, or it might all be Joyce
