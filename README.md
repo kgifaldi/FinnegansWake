@@ -1,2 +1,9 @@
-# FinnegansWake
-# John Nolan and Kyle Gifaldi
+*FinnegansWake Language Analysis*
+*John Nolan and Kyle Gifaldi*
+
+This is our Finnegans Wake NLP project, attempting to identify diferent languages within the late modernist novel by Joyce Joyce.
+You can find our simplest model, an ngram language model, within ngram.py. It runs a character-level ngram model employing witten-bell smoothing. The file witten_mod.py contains the class fot this ngram model. It has been tweaked for our purposes, and witten_gram contains the unmodified version.
+ngram.py will create three output files within the directory 'output' titled 'french,' 'german,' and 'irish.' They contiain the outputs for our ngram model formatted like fweet.org, printing the line and any segments that we identified as belonging to the language of interest.
+finnegans_MLP.py contains our neural network model for identifying languages. You could call our neural network a multi-layer perceptron. The file contains a class for this multilayer perceptron, which will run the model and compile the necessary data. The 'main' function call shows how to create and run this MLP class. You can specify the vocabulary size for the embedding, the input size (the size of the frame that you want to consider for a language) and a boolean for whether the MLP should use tagging or not. If you want to use tagging, you must build the tagged data with the make_tag_data call that we commented out. This functino takes ages, and our tagged data was actually limited because we did not have time to tag our entire corpus. Once you have the tagged data, which appends to every letter the part of speech where it appeared, you can run the neural network with the taggin option.
+finnegans_MLP.py should create three files in the output directory. german_NN, french_NN, and irish_NN if you did not use tagging, and german_NNT, french_NNT, and irish_NNT if you do.
+You can test these files with our testing script, testing.py, which should output a precision, recall, and f1 score.
