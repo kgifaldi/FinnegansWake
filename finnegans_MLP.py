@@ -11,6 +11,7 @@ from nltk.tag import StanfordPOSTagger
 from nltk import word_tokenize
 import numpy as np
 import os
+import re
 
 class FinnegansMLP:
 
@@ -115,7 +116,7 @@ class FinnegansMLP:
 
 		#sgd = SGD(lr=0.01, decay=1e-6, momentum=0.9, nesterov=True)
 		model.compile(loss='categorical_crossentropy',
-				optimizer='adam', #sgd, #'rmsprop' might also work, or 'adam'
+				optimizer='adam', #sgd, #'rmsprop' might also work
 				metrics=['accuracy'])
 		data = []
 		labels = [] #concatenate all data and labels
@@ -136,7 +137,7 @@ class FinnegansMLP:
 
 		model.fit(data, one_hot_labels, epochs=1, batch_size=32)
 
-		with open("french_predictions", "w+") as of, open("german_predictions", "w+") as og, open("irish_predictions", "w+") as oi:
+		with open("output/french_NN", "w+") as of, open("output/german_NN", "w+") as og, open("output/irish_NN", "w+") as oi:
 			if self.tagging:
 				testdata = "finnegans_data"
 			else:
@@ -199,9 +200,7 @@ class FinnegansMLP:
 					oi.write("\n")
 
 		#so we print the parts it predicted for each language. That's why it's key not to use RNN, or it might all be Joyce
-		#go back through finnegans and print the segments that were tagged as german (and line number can be stored
-		# with data, zip through it)
-		#or do predict_on_batch for eatch line part of finnegans wake.
+		#we are predicting languages for each small window on the text.
 
 	def make_tag_data(self):
 		"""generate the tagged data (which takes ages)"""
@@ -280,6 +279,6 @@ class FinnegansMLP:
 
 
 if __name__=="__main__":
-	fmodel = FinnegansMLP(100, 9, False) #vocab size and input length
+	fmodel = FinnegansMLP(100, 9, False) #vocab size and input length, tagging set to false
 	#fmodel.make_tag_data() #this takes very long, tagging each item
 	fmodel.run_model()
