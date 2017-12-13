@@ -14,12 +14,43 @@ import os
 
 class FinnegansMLP:
 
-	def __init__(self, n, i):
+	def __init__(self, n, i, t):
 		"""Define letter vocab size, n, and input size, i"""
 
 		self.n = n
 		self.isize = i
 		self.categories = ["french", "german", "irish", "joyce"]
+		self.tagging = t
+
+	def compile_tag_data(self, cat):
+		"""Compile data for the given category (indexed in the following list)"""
+
+		n = self.n
+		isize = self.isize
+		
+		if cat == 2:
+			return [], [] # no irish data
+
+		text = ""
+		with open(self.categories[cat] + "_data") as tf:
+			for line in tf:
+				text += line.strip() #setup for character level hashing
+
+		raw_data = hashing_trick(text, n, hash_function='md5', lower=False, split=' ')
+
+		#with this data, will cut it into groups of isize (this is just a list)
+		# and also make a label for each of these groups with the category index 
+		labels = []
+		data = []
+		for i in range(0, len(raw_data), isize):
+			if i + isize < len(raw_data): #in bounds
+				data.append(raw_data[i:i+isize])
+			else:
+				zeros = [0]*(i+isize - len(raw_data)) #pad the rest of the values
+				data.append(raw_data[i:len(raw_data)] + zeros)
+			labels.append(cat) #an index for each category is training target
+		return data, labels #return two arrays 
+
 
 	def compile_data(self, cat):
 		"""Compile data for the given category (indexed in the following list)"""
@@ -89,20 +120,20 @@ class FinnegansMLP:
 		data = []
 		labels = [] #concatenate all data and labels
 		for i in range(4):
-			idata, ilabels = self.compile_data(i)
+			if self.tagging:
+				idata, ilabels = self.compile_tag_data(i)
+			else:
+				idata, ilabels = self.compile_data(i)
 			data += idata
 			labels += ilabels
-		print(data)
-		data = np.array([np.array(d) for d in data])
-		labels = np.array(labels)
+
+		perm = np.random.permutation(len(data)) #shuffle data and labels
+		data = np.array([np.array(data[i]) for i in perm])
+		labels = np.array([labels[i] for i in perm])
 		print("created data")
 			
 		one_hot_labels = keras.utils.to_categorical(labels, num_classes=4)
-		print(one_hot_labels)
 
-		#TODO: shuffle with np permutation
-		print(data)
-		print("fitting model")
 		model.fit(data, one_hot_labels, epochs=2, batch_size=32)
 
 		with open("french_predictions", "w+") as of, open("german_predictions", "w+") as og, open("irish_predictions", "w+") as oi:
@@ -110,34 +141,53 @@ class FinnegansMLP:
 				f = False #have found these in the line
 				g = False
 				ir = False
+				lastf = 1000 #last index where this language appeared (should be somewhat far apart)
+				lastg = 1000
+				lastir = 1000
 				integer_samples = self.make_test_data(line)
+				if len(line) < self.isize:
+					continue #too short to consider
 				if not integer_samples:
-					print("BLANK " + line)
 					continue #sometimes will be an empty line
 				samples = np.array([np.array(s) for s in integer_samples])
-				print(samples)
 				prediction = model.predict(samples, batch_size=len(integer_samples), verbose=1) # should give us batch_size vectors of classifications,
-				print(prediction)
 				for i, v in enumerate(prediction): #should be a prediction for each index in line
-					"""
+					if self.tagging: #remove part of speech tags
+						line = re.sub('_[^ ]+ ', '', line.strip())
+						line = re.sub('_ ', ' ', line) #remove space subsitutes
+					else:
+						line = line.strip() 
+
 					best = np.argmax(v) #this gives us the best language for that part
 					#Perhaps we could add everything that's better than the joyce tag. That's a good strategy
-					if v[0]:
-						if not f:
-							of.write(line)
+
+					if i + self.isize > len(line): #clip bounds
+						r = len(line)
+					else:
+						r = i + self.isize
+
+					if best == 0:
+						print(f)
+						if not f: #first french word found, write line
+							of.write(line + "\n")
 							f = True
-						of.write(line[i + self.isize])
-					if v[1]:
-						if not g:
-							og.write(line)
+						if lastf - i > self.isize:
+							of.write(line[i:r] + "\n")
+							lastf = i #reset index
+					if best == 1:
+						if not g: 
+							og.write(line + "\n")
 							g = True
-						og.write(line[i + self.isize])				
-					if v[2]:
+						if lastg - i > self.isize:
+							og.write(line[i:r] + "\n")
+							lastg = i	
+					if best == 2:
 						if not ir:
-							of.write(line)
+							of.write(line + "\n")
 							ir = True
-						of.write(line[i + self.isize]) #picked this part of the line
-					"""
+						if lastir - i > self.isize:
+							of.write(line[i:r] + "\n") #picked this part of the line
+							lastir = i
 
 		#so we print the parts it predicted for each language. That's why it's key not to use RNN, or it might all be Joyce
 		#go back through finnegans and print the segments that were tagged as german (and line number can be stored
@@ -146,7 +196,7 @@ class FinnegansMLP:
 
 		#another great idea: shuffle training samples together, should train much better
 
-	def make_data(self):
+	def make_tag_data(self):
 		"""generate the tagged data (which takes ages)"""
 
 		jar = '../stanford-postagger-full-2017-06-09/stanford-postagger.jar'
@@ -167,25 +217,9 @@ class FinnegansMLP:
 						if text:
 							wf.write("\n")
 
-		french_model = '../stanford-postagger-full-2017-06-09/models/french.tagger'
-		french_tagger = StanfordPOSTagger(french_model, jar)
-
-		with open("french_data", "w+") as wf: #output all french data to a file
-			for filename in os.listdir("./langs/french"):
-				print(filename + "...")
-				with open("./langs/french/" + filename) as ff:
-					for line in ff:
-						print(line.strip())
-						text = french_tagger.tag(word_tokenize(line.strip()))
-						for word, tag in text: #, tag in text:
-							for c in word:
-								wf.write("_".join([c, tag]) + " ")
-							wf.write("_" + " ") #space character
-						if text:
-							wf.write("\n")
-		
 		english_model = '../stanford-postagger-full-2017-06-09/models/english-left3words-distsim.tagger'
 		english_tagger = StanfordPOSTagger(english_model, jar)
+
 		print("finnegans wake...")
 		with open("finnegans_data", "w+") as wf:
 			with open("./langs/finnegans.txt") as fif:
@@ -199,6 +233,35 @@ class FinnegansMLP:
 					if text:
 						wf.write("\n")
 
+		with open("joyce_data", "w+") as wf: #output all joyce data to a file
+			for filename in os.listdir("./langs/joyce"):
+				print(filename + "...")
+				with open("./langs/joyce/" + filename) as ff:
+					for line in ff:
+						print(line.strip())
+						text = english_tagger.tag(word_tokenize(line.strip()))
+						for word, tag in text: #, tag in text:
+							for c in word:
+								wf.write("_".join([c, tag]) + " ")
+							wf.write("_" + " ") #space character
+						if text:
+							wf.write("\n")
+		
+		french_model = '../stanford-postagger-full-2017-06-09/models/french.tagger'
+		french_tagger = StanfordPOSTagger(french_model, jar)
+		with open("french_data", "w+") as wf: #output all french data to a file
+			for filename in os.listdir("./langs/french"):
+				print(filename + "...")
+				with open("./langs/french/" + filename) as ff:
+					for line in ff:
+						print(line.strip())
+						text = french_tagger.tag(word_tokenize(line.strip()))
+						for word, tag in text: #, tag in text:
+							for c in word:
+								wf.write("_".join([c, tag]) + " ")
+							wf.write("_" + " ") #space character
+						if text:
+							wf.write("\n")
 		#Then we will have labes with 4 possible values (Joyce, Irish, French, German) 
 		#An array of batchsize vectors, 1D with values ranging within 4. convert these:
 		#mix up labels in the same order as groups of characters
@@ -210,6 +273,6 @@ class FinnegansMLP:
 
 
 if __name__=="__main__":
-	fmodel = FinnegansMLP(100, 9) #vocab size and input length
-	#fmodel.make_data() #this takes very long, tagging each item
+	fmodel = FinnegansMLP(100, 9, False) #vocab size and input length
+	#fmodel.make_tag_data() #this takes very long, tagging each item
 	fmodel.run_model()
