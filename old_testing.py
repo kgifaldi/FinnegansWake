@@ -71,15 +71,18 @@ def calculate_f1(lang_dict, filename):
     fn = 0
     fp = 0
     phrases = set()
+    first_blank = True
     for line in filename:
         if is_phrase or initial:
             initial = False
             is_phrase = False
             curr_phrase = line.rstrip()
             phrases.add(curr_phrase)
+            first_blank = True
         else:
             curr_translations.append(line.strip())
-        if not line.strip():
+        if not line.strip() and first_blank:
+            first_blank = False
             # end of line translation evaluate
             if curr_phrase in lang_dict:
                 matched = [False]*len(lang_dict[curr_phrase]) #check off true data when matched
