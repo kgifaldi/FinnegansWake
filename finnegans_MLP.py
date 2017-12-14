@@ -282,6 +282,6 @@ class FinnegansMLP:
 
 
 if __name__=="__main__":
-	fmodel = FinnegansMLP(100, 9, False) #vocab size and input length, tagging using tagging or not
+	fmodel = FinnegansMLP(100, 9, True) #vocab size and input length, tagging using tagging or not
 	#fmodel.make_tag_data() #this takes very long, tagging each item
 	fmodel.run_model()
