@@ -131,11 +131,10 @@ class FinnegansMLP:
 		perm = np.random.permutation(len(data)) #shuffle data and labels
 		data = np.array([np.array(data[i]) for i in perm])
 		labels = np.array([labels[i] for i in perm])
-		print("created data")
 			
 		one_hot_labels = keras.utils.to_categorical(labels, num_classes=4)
 
-		model.fit(data, one_hot_labels, epochs=1, batch_size=32)
+		model.fit(data, one_hot_labels, epochs=20, batch_size=32)
 
 		if self.tagging:
 			suffix = "_NNT"
@@ -283,6 +282,6 @@ class FinnegansMLP:
 
 
 if __name__=="__main__":
-	fmodel = FinnegansMLP(100, 9, True) #vocab size and input length, tagging using tagging or not
+	fmodel = FinnegansMLP(100, 9, False) #vocab size and input length, tagging using tagging or not
 	#fmodel.make_tag_data() #this takes very long, tagging each item
 	fmodel.run_model()
