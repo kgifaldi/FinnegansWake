@@ -87,13 +87,16 @@ def calculate_f1(lang_dict, filename):
             if curr_phrase in lang_dict:
                 matched = [False]*len(lang_dict[curr_phrase]) #check off true data when matched
                 for trans1 in curr_translations:
+                    found_match = False
                     for i, trans2 in enumerate(lang_dict[curr_phrase]):
                         rat = fuzz.partial_ratio(trans1, trans2)
-                        if rat < 50 or matched[i]:
-                            fp += 1
-                        else:
+                        if rat > 50 and not matched[i]:
                             tp += 1
-                        matched[i] = True
+                            matched[i] = True
+                            found_match = True
+                            break
+                    if not found_match: #no match in annotations
+                        fp += 1
                 for b in matched:
                     if not b:
                         fn += 1

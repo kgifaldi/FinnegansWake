@@ -131,13 +131,17 @@ class FinnegansMLP:
 		perm = np.random.permutation(len(data)) #shuffle data and labels
 		data = np.array([np.array(data[i]) for i in perm])
 		labels = np.array([labels[i] for i in perm])
-		print("created data")
 			
 		one_hot_labels = keras.utils.to_categorical(labels, num_classes=4)
 
-		model.fit(data, one_hot_labels, epochs=1, batch_size=32)
+		model.fit(data, one_hot_labels, epochs=20, batch_size=32)
 
-		with open("output/french_NN", "w+") as of, open("output/german_NN", "w+") as og, open("output/irish_NN", "w+") as oi:
+		if self.tagging:
+			suffix = "_NNT"
+		else:
+			suffix = "_NN"
+
+		with open("output/french" + suffix, "w+") as of, open("output/german" + suffix, "w+") as og, open("output/irish" + suffix, "w+") as oi:
 			if self.tagging:
 				testdata = "finnegans_data"
 			else:
@@ -157,11 +161,10 @@ class FinnegansMLP:
 				samples = np.array([np.array(s) for s in integer_samples])
 				prediction = model.predict(samples, batch_size=len(integer_samples), verbose=1) # should give us batch_size vectors of classifications,
 				for i, v in enumerate(prediction): #should be a prediction for each index in line
+					line = line.strip()
 					if self.tagging: #remove part of speech tags
-						line = re.sub('_[^ ]+ ', '', line.strip())
-						line = re.sub('_ ', ' ', line) #remove space subsitutes
-					else:
-						line = line.strip() 
+						line = re.sub('_[^ ]+ ', '', line)
+						line = re.sub('_', '', line) #remove space subsitutes
 
 					best = np.argmax(v) #this gives us the best language for that part
 					#Perhaps we could add everything that's better than the joyce tag. That's a good strategy
@@ -175,21 +178,21 @@ class FinnegansMLP:
 						if not f: #first french word found, write line
 							of.write(line + "\n")
 							f = True
-						if i - lastf > self.isize:
+						if i - lastf > self.isize and r - i > 2:
 							of.write(line[i:r] + "\n")
 							lastf = i #reset index
 					if best == 1:
 						if not g: 
 							og.write(line + "\n")
 							g = True
-						if i - lastg > self.isize:
+						if i - lastg > self.isize and r - i > 2:
 							og.write(line[i:r] + "\n")
 							lastg = i	
 					if best == 2:
 						if not ir:
 							oi.write(line + "\n")
 							ir = True
-						if i - lastir > self.isize:
+						if i - lastir > self.isize and r - i > 2:
 							oi.write(line[i:r] + "\n") #picked this part of the line
 							lastir = i
 				if f:
@@ -279,6 +282,6 @@ class FinnegansMLP:
 
 
 if __name__=="__main__":
-	fmodel = FinnegansMLP(100, 9, False) #vocab size and input length, tagging set to false
+	fmodel = FinnegansMLP(100, 9, True) #vocab size and input length, tagging using tagging or not
 	#fmodel.make_tag_data() #this takes very long, tagging each item
 	fmodel.run_model()
