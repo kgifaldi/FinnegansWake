@@ -71,15 +71,18 @@ def calculate_f1(lang_dict, filename):
     fn = 0
     fp = 0
     phrases = set()
+    first_blank = True
     for line in filename:
         if is_phrase or initial:
             initial = False
             is_phrase = False
             curr_phrase = line.rstrip()
             phrases.add(curr_phrase)
+            first_blank = True
         else:
             curr_translations.append(line.strip())
-        if not line.strip():
+        if not line.strip() and first_blank:
+            first_blank = False
             # end of line translation evaluate
             if curr_phrase in lang_dict:
                 matched = [False]*len(lang_dict[curr_phrase]) #check off true data when matched
@@ -106,40 +109,58 @@ def calculate_f1(lang_dict, filename):
     for line in lang_dict:
         if line not in phrases:
             fn += len(lang_dict[line])
-
-    precision = float(tp / float(tp+fp))
-    recall = float(tp/float((tp+fn)))
-    f1 = float(2*float(precision*recall)/(precision+recall))
-    print("Precision: ", precision)
-    print("Recall: ", recall)
-    print("F1 score: ", f1)
+    if (tp+fp) and (tp+fn):
+        precision = float(tp / float(tp+fp))
+        recall = float(tp/float((tp+fn)))
+        f1 = float(2*float(precision*recall)/(precision+recall))
+    elif (tp+fp):
+        precision = float(tp / float(tp+fp))
+        recall = 0
+        f1 = 0
+    else:
+        precision = 0
+        recall = float(tp/float((tp+fn)))
+        f1 = 0
+    print "Precision: ", precision
+    print "Recall: ", recall
+    print "F1 score: ", f1
 
 if __name__ == "__main__":
 
     url = str("http://fweet.org/cgi-bin/fw_grep.cgi?srch=_G_&cake=&icase=1&accent=1&beauty=1&hilight=1&showtxt=1&escope=1&rscope=1&dist=4&ndist=4&fontsz=100&shorth=1")
     german_dict = parse(url)
     german_file = open("./output/german", "r")
-    print("German Simple F1: ")
+    print "German Simple F1: "
     calculate_f1(german_dict, german_file)
     german_file = open("./output/german_NN", "r")
-    print("German Neural Network F1: ")
+    print "German Neural Network F1: "
+    calculate_f1(german_dict, german_file)
+    german_file = open("./output/german_NNT", "r")
+    print "German Neural Network Tagged F1: "
     calculate_f1(german_dict, german_file)
 
 
     url = str("http://fweet.org/cgi-bin/fw_grep.cgi?srch=_F_&cake=&icase=1&accent=1&beauty=1&hilight=1&showtxt=1&escope=1&rscope=1&dist=4&ndist=4&fontsz=100&shorth=1")
     french_dict = parse(url)
     french_file = open("./output/french", "r")
-    print("French Simple F1: ")
+    print "French Simple F1: "
     calculate_f1(french_dict, french_file)
     french_file = open("./output/french_NN", "r")
-    print("French Neural Network F1: ")
+    print "French Neural Network F1: "
+    calculate_f1(french_dict, french_file)
+    french_file = open("./output/french_NNT", "r")
+    print "French Neural Network Tagged F1: "
     calculate_f1(french_dict, french_file)
 
     url = str("http://fweet.org/cgi-bin/fw_grep.cgi?srch=_I_&cake=&icase=1&accent=1&beauty=1&hilight=1&showtxt=1&escope=1&rscope=1&dist=4&ndist=4&fontsz=100&shorth=1")
     irish_dict = parse(url)
     irish_file = open("./output/irish", "r")
-    print("French Simple F1: ")
+    print "French Simple F1: "
     calculate_f1(irish_dict, irish_file)
     irish_file = open("./output/irish_NN", "r")
-    print("French Neural Network F1: ")
+    print "French Neural Network F1: "
     calculate_f1(irish_dict, irish_file)
+    irish_file = open("./output/irish_NNT", "r")
+    print "French Neural Network Tagged F1: "
+    calculate_f1(irish_dict, irish_file)
+
